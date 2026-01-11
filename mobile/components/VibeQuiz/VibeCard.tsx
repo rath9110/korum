@@ -1,120 +1,59 @@
 import React from 'react';
-import { StyleSheet, Text, View, Dimensions, Image, Platform } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
-import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    runOnJS,
-    interpolate,
-    Extrapolate,
-} from 'react-native-reanimated';
+import { StyleSheet, Text, View, Dimensions, ImageBackground, TouchableOpacity, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { QuizQuestion, QuizOption } from '../../constants/QuizData';
 
-const { width } = Dimensions.get('window');
-const SWIPE_THRESHOLD = width * 0.3;
+const { width, height } = Dimensions.get('window');
 
-const triggerHaptic = () => {
-    if (Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-};
+// Helper for Frosted Glass effect (Simulated with semi-transparent white/blur)
+// In a real Expo app, we'd use expo-blur, but simple opacity works for MVP Web demo.
+const FrostedButton = ({ text, onPress }: { text: string; onPress: () => void }) => (
+    <TouchableOpacity
+        style={styles.button}
+        onPress={() => {
+            if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onPress();
+        }}
+        activeOpacity={0.8}
+    >
+        <View style={styles.glassLayer} />
+        <Text style={styles.buttonText}>{text}</Text>
+    </TouchableOpacity>
+);
 
 type VibeCardProps = {
-    data: {
-        text: string;
-        leftOption: { text: string; image: string };
-        rightOption: { text: string; image: string };
-    };
-    onSwipeLeft: () => void;
-    onSwipeRight: () => void;
+    data: QuizQuestion;
+    onOptionSelect: (option: QuizOption) => void;
 };
 
-export const VibeCard = ({ data, onSwipeLeft, onSwipeRight }: VibeCardProps) => {
-    const translateX = useSharedValue(0);
-    const startX = useSharedValue(0);
-
-    const panGesture = Gesture.Pan()
-        .onStart(() => {
-            startX.value = translateX.value;
-        })
-        .onUpdate((event) => {
-            translateX.value = startX.value + event.translationX;
-        })
-        .onEnd((event) => {
-            if (event.translationX < -SWIPE_THRESHOLD) {
-                translateX.value = withSpring(-width * 1.5);
-                runOnJS(onSwipeLeft)();
-                runOnJS(triggerHaptic)();
-            } else if (event.translationX > SWIPE_THRESHOLD) {
-                translateX.value = withSpring(width * 1.5);
-                runOnJS(onSwipeRight)();
-                runOnJS(triggerHaptic)();
-            } else {
-                translateX.value = withSpring(0);
-            }
-        });
-
-    const cardStyle = useAnimatedStyle(() => {
-        const rotate = interpolate(
-            translateX.value,
-            [-width / 2, 0, width / 2],
-            [-15, 0, 15],
-            Extrapolate.CLAMP
-        );
-
-        return {
-            transform: [
-                { translateX: translateX.value },
-                { rotate: `${rotate}deg` }
-            ],
-        };
-    });
-
-    const leftOpacity = useAnimatedStyle(() => ({
-        opacity: interpolate(translateX.value, [0, SWIPE_THRESHOLD], [0, 1]),
-    }));
-
-    const rightOpacity = useAnimatedStyle(() => ({
-        opacity: interpolate(translateX.value, [-SWIPE_THRESHOLD, 0], [1, 0]),
-    }));
-
+export const VibeCard = ({ data, onOptionSelect }: VibeCardProps) => {
     return (
         <View style={styles.container}>
-            <GestureDetector gesture={panGesture}>
-                <Animated.View style={[styles.card, cardStyle]}>
-                    <LinearGradient
-                        colors={['#1a1a1a', '#000000']}
-                        style={StyleSheet.absoluteFillObject}
-                    />
+            <ImageBackground
+                source={{ uri: data.image }}
+                style={styles.background}
+                resizeMode="cover"
+            >
+                <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.9)']}
+                    style={StyleSheet.absoluteFillObject}
+                />
 
-                    <View style={styles.content}>
-                        <Text style={styles.question}>{data.text}</Text>
+                <View style={styles.contentContainer}>
+                    <Text style={styles.question}>{data.text}</Text>
 
-                        <View style={styles.options}>
-                            <View style={styles.option}>
-                                <Image source={{ uri: data.leftOption.image }} style={styles.image} />
-                                <Text style={styles.optionText}>{data.leftOption.text}</Text>
-                            </View>
-                            <View style={styles.divider} />
-                            <View style={styles.option}>
-                                <Image source={{ uri: data.rightOption.image }} style={styles.image} />
-                                <Text style={styles.optionText}>{data.rightOption.text}</Text>
-                            </View>
-                        </View>
+                    <View style={styles.optionsContainer}>
+                        {data.options.map((option, index) => (
+                            <FrostedButton
+                                key={index}
+                                text={option.text}
+                                onPress={() => onOptionSelect(option)}
+                            />
+                        ))}
                     </View>
-
-                    {/* Overlay Labels */}
-                    <Animated.View style={[styles.overlay, { right: 20 }, leftOpacity]}>
-                        <Text style={styles.overlayText}>RIGHT</Text>
-                    </Animated.View>
-                    <Animated.View style={[styles.overlay, { left: 20 }, rightOpacity]}>
-                        <Text style={styles.overlayText}>LEFT</Text>
-                    </Animated.View>
-
-                </Animated.View>
-            </GestureDetector>
+                </View>
+            </ImageBackground>
         </View>
     );
 };
@@ -122,71 +61,53 @@ export const VibeCard = ({ data, onSwipeLeft, onSwipeRight }: VibeCardProps) => 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...StyleSheet.absoluteFillObject,
+        width: width,
+        height: height,
+        backgroundColor: '#0D0D0D',
     },
-    card: {
-        width: width * 0.9,
-        height: '70%',
-        borderRadius: 20,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#333',
-        elevation: 5,
-    },
-    content: {
+    background: {
         flex: 1,
-        padding: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-end',
+    },
+    contentContainer: {
+        padding: 24,
+        paddingBottom: 60,
+        justifyContent: 'flex-end',
+        minHeight: height * 0.4,
     },
     question: {
-        fontSize: 24,
         color: '#FFF',
-        fontFamily: 'Courier', // Placeholder for monospace
+        fontSize: 28,
+        fontFamily: Platform.select({ web: 'Courier', default: 'monospace' }),
+        fontWeight: '500',
         marginBottom: 40,
-        textAlign: 'center',
-        letterSpacing: 2,
+        letterSpacing: -0.5,
+        textShadowColor: 'rgba(0, 0, 0, 0.75)',
+        textShadowOffset: { width: -1, height: 1 },
+        textShadowRadius: 10
     },
-    options: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: '100%',
+    optionsContainer: {
+        gap: 16,
     },
-    option: {
-        width: '45%',
+    button: {
+        height: 60,
+        borderRadius: 30, // Pill shape
+        overflow: 'hidden',
+        justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.1)', // Subtle glass
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
-    image: {
-        width: '100%',
-        aspectRatio: 1,
-        borderRadius: 10,
-        marginBottom: 10,
-        opacity: 0.8,
+    glassLayer: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(255,255,255,0.05)',
     },
-    optionText: {
+    buttonText: {
         color: '#FFF',
-        fontSize: 14,
-        textAlign: 'center',
-        fontFamily: 'Courier',
-    },
-    divider: {
-        width: 1,
-        height: '100%',
-        backgroundColor: '#333',
-    },
-    overlay: {
-        position: 'absolute',
-        top: 50,
-        padding: 10,
-        borderWidth: 2,
-        borderColor: '#FFF',
-        borderRadius: 5,
-    },
-    overlayText: {
-        color: '#FFF',
-        fontSize: 32,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: '600',
+        fontFamily: Platform.select({ web: 'Courier', default: 'monospace' }),
+        letterSpacing: 1,
     },
 });

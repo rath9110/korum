@@ -1,144 +1,153 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { VibeCard } from './VibeCard';
-import { QUIZ_DATA } from '../../constants/QuizData';
+import { QUIZ_DATA, QuizOption, Archetype } from '../../constants/QuizData';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '../../lib/supabase';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withDelay, Easing } from 'react-native-reanimated';
+
+const { width } = Dimensions.get('window');
+
+// Initial Scores
+const initialScores: Record<Archetype, number> = {
+    THE_BRUTALIST: 0,
+    THE_EPICUREAN: 0,
+    THE_CATALYST: 0,
+    THE_OBSERVER: 0,
+    THE_MODERNIST: 0,
+};
 
 export const QuizContainer = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [answers, setAnswers] = useState<string[]>([]);
+    const [scores, setScores] = useState<Record<Archetype, number>>({ ...initialScores });
     const [completed, setCompleted] = useState(false);
-    const [saving, setSaving] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    const handleSwipe = (direction: 'left' | 'right') => {
-        const currentQuestion = QUIZ_DATA[currentIndex];
-        const archetype = direction === 'left' ? currentQuestion.leftOption.archetype : currentQuestion.rightOption.archetype;
+    // Animation Values
+    const progressWidth = useSharedValue(0);
+    const fadeAnim = useSharedValue(1);
 
-        setAnswers([...answers, archetype]);
+    const progressStyle = useAnimatedStyle(() => ({
+        width: progressWidth.value,
+    }));
 
-        if (currentIndex < QUIZ_DATA.length - 1) {
-            setTimeout(() => setCurrentIndex(currentIndex + 1), 200); // Small delay for animation
+    useEffect(() => {
+        // Update progress bar
+        const progress = ((currentIndex + 1) / QUIZ_DATA.length) * width;
+        progressWidth.value = withTiming(progress, { duration: 500 });
+    }, [currentIndex]);
+
+    const handleOptionSelect = async (option: QuizOption) => {
+        // 1. Update Scores
+        const newScores = { ...scores };
+        Object.entries(option.weights).forEach(([key, weight]) => {
+            const archetype = key as Archetype;
+            if (weight) newScores[archetype] += weight;
+        });
+        setScores(newScores);
+
+        // 2. Check for "Refining..." Transition (After Q4)
+        if (currentIndex === 3) {
+            setIsAnalyzing(true);
+            // Simulate analysis delay
+            setTimeout(() => {
+                setIsAnalyzing(false);
+                setCurrentIndex(prev => prev + 1);
+            }, 1200);
+        } else if (currentIndex < QUIZ_DATA.length - 1) {
+            // Normal Transition
+            setCurrentIndex(prev => prev + 1);
         } else {
-            setCompleted(true);
-            saveResult([...answers, archetype]);
+            // 3. Completion
+            finishQuiz(newScores);
         }
     };
 
-    const saveResult = async (finalAnswers: string[]) => {
-        setSaving(true);
-        // Calculate mode
-        const frequency: Record<string, number> = {};
-        let maxFreq = 0;
-        let result = '';
+    const finishQuiz = async (finalScores: Record<Archetype, number>) => {
+        setCompleted(true);
 
-        finalAnswers.forEach(a => {
-            frequency[a] = (frequency[a] || 0) + 1;
-            if (frequency[a] > maxFreq) {
-                maxFreq = frequency[a];
-                result = a;
-            }
-        });
+        // Find Primary Identity
+        const winner: Archetype = Object.keys(finalScores).reduce((a, b) =>
+            finalScores[a as Archetype] > finalScores[b as Archetype] ? a : b
+        ) as Archetype;
 
+        // Save to Supabase (Anonymous)
         try {
-            // 1. Sign in anonymously
             const { data: { user }, error: authError } = await supabase.auth.signInAnonymously();
-            if (authError) throw authError;
-
             if (user) {
-                // 2. Create/Update user profile
-                // Note: In a real app, we'd use BankID data. 
-                // For now, we use a random hash to satisfy the NOT NULL constraint on personal_number_hash
                 const randomHash = Math.random().toString(36).substring(7);
-
-                const { error: dbError } = await supabase
-                    .from('users')
-                    .upsert({
-                        id: user.id,
-                        full_name: 'Anonymous User',
-                        personal_number_hash: `anon_${randomHash}`,
-                        primary_archetype: result,
-                        district: 'Vasastan', // Default for now
-                        is_active_for_week: false
-                    });
-
-                if (dbError) {
-                    console.error('DB Error:', dbError);
-                    Alert.alert('Error', 'Failed to save your vibe.');
-                }
+                await supabase.from('users').upsert({
+                    id: user.id,
+                    full_name: 'Anonymous KRETS',
+                    personal_number_hash: `anon_${randomHash}`,
+                    primary_archetype: winner,
+                    district: 'Vasastan',
+                    is_active_for_week: false
+                });
             }
-        } catch (e: any) {
-            console.error('Auth Error:', e);
-            Alert.alert('Error', e.message);
-        } finally {
-            setSaving(false);
+        } catch (e) {
+            console.error("Save error", e);
         }
     };
 
-    if (completed) {
-        // Re-calculating for display
-        const frequency: Record<string, number> = {};
-        let maxFreq = 0;
-        let result = '';
-        answers.forEach(a => {
-            frequency[a] = (frequency[a] || 0) + 1;
-            if (frequency[a] > maxFreq) {
-                maxFreq = frequency[a];
-                result = a;
-            }
-        });
-
+    // Render "Analyzing..." Interstitial
+    if (isAnalyzing) {
         return (
-            <View style={styles.resultContainer}>
-                <Text style={styles.resultTitle}>YOUR VIBE</Text>
-                <Text style={styles.archetype}>{result.replace('_', ' ')}</Text>
-
-                {saving ? (
-                    <Text style={styles.savingText}>Saving to the grid...</Text>
-                ) : (
-                    <TouchableOpacity style={styles.button} onPress={() => {
-                        setAnswers([]);
-                        setCurrentIndex(0);
-                        setCompleted(false);
-                    }}>
-                        <Text style={styles.buttonText}>RETAKE</Text>
-                    </TouchableOpacity>
-                )}
+            <View style={styles.centerContainer}>
+                <ActivityIndicator size="large" color="#FFF" />
+                <Text style={styles.analyzingText}>Refining your Circle...</Text>
             </View>
         );
     }
 
+    // Render Completion / Payment Trigger
+    if (completed) {
+        // Find winner for display
+        const winner: Archetype = Object.keys(scores).reduce((a, b) =>
+            scores[a as Archetype] > scores[b as Archetype] ? a : b
+        ) as Archetype;
+
+        return (
+            <View style={styles.centerContainer}>
+                <Text style={styles.vibeTitle}>INITIAL VIBE CAPTURED</Text>
+                <Text style={styles.archetypeTitle}>{winner.replace('THE_', '').replace('_', ' ')}</Text>
+
+                <View style={styles.paymentContainer}>
+                    <Text style={styles.paymentText}>Secure your seat in the Circle.</Text>
+                    <Text style={styles.detailsText}>Wednesday, 20:00 • Stockholm</Text>
+
+                    <TouchableOpacity style={styles.swishButton}>
+                        <Text style={styles.swishButtonText}>Swish 100 SEK</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity onPress={() => {
+                    setScores({ ...initialScores });
+                    setCurrentIndex(0);
+                    setCompleted(false);
+                }}>
+                    <Text style={styles.retakeLink}>Retake Analysis</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    const currentQuestion = QUIZ_DATA[currentIndex];
+
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={styles.container}>
             <StatusBar style="light" />
-            <View style={styles.header}>
-                <Text style={styles.progress}>
-                    {currentIndex + 1} / {QUIZ_DATA.length}
-                </Text>
+
+            {/* Thread Progress Bar */}
+            <View style={styles.progressBarContainer}>
+                <Animated.View style={[styles.progressBar, progressStyle]} />
             </View>
 
-            <View style={styles.cardsContainer}>
-                {QUIZ_DATA.map((item, index) => {
-                    if (index < currentIndex) return null;
-                    if (index > currentIndex + 1) return null;
-
-                    const isTop = index === currentIndex;
-                    return (
-                        <View key={item.id} style={[styles.cardWrapper, { zIndex: QUIZ_DATA.length - index }]}>
-                            {isTop ? (
-                                <VibeCard
-                                    data={item}
-                                    onSwipeLeft={() => handleSwipe('left')}
-                                    onSwipeRight={() => handleSwipe('right')}
-                                />
-                            ) : (
-                                <View style={styles.placeholderCard} />
-                            )}
-                        </View>
-                    );
-                })}
-            </View>
-        </SafeAreaView>
+            <VibeCard
+                data={currentQuestion}
+                onOptionSelect={handleOptionSelect}
+            />
+        </View>
     );
 };
 
@@ -147,69 +156,79 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#000',
     },
-    header: {
+    centerContainer: {
+        flex: 1,
+        backgroundColor: '#0D0D0D', // KRETS Dark Mode
+        alignItems: 'center',
+        justifyContent: 'center',
         padding: 20,
-        alignItems: 'center',
     },
-    progress: {
-        color: '#666',
-        fontFamily: 'Courier',
+    analyzingText: {
+        color: '#FFF',
         marginTop: 20,
-    },
-    cardsContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cardWrapper: {
-        position: 'absolute',
-        width: '100%',
-        height: '100%',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    placeholderCard: {
-        width: '85%',
-        height: '68%',
-        backgroundColor: '#111',
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#333',
-        top: 10,
-    },
-    resultContainer: {
-        flex: 1,
-        backgroundColor: '#000',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    resultTitle: {
-        color: '#666',
-        fontSize: 16,
         fontFamily: 'Courier',
-        marginBottom: 20,
+        fontSize: 16,
         letterSpacing: 2,
     },
-    archetype: {
+    progressBarContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 4,
+        backgroundColor: '#333',
+        zIndex: 10,
+    },
+    progressBar: {
+        height: '100%',
+        backgroundColor: '#FFF',
+    },
+    vibeTitle: {
+        color: '#666',
+        fontSize: 14,
+        fontFamily: 'Courier',
+        letterSpacing: 2,
+        marginBottom: 20,
+    },
+    archetypeTitle: {
         color: '#FFF',
         fontSize: 32,
         fontFamily: 'Courier',
-        marginBottom: 40,
-        letterSpacing: 1,
-    },
-    savingText: {
-        color: '#666',
-        fontFamily: 'Courier',
-    },
-    button: {
-        paddingVertical: 15,
-        paddingHorizontal: 40,
-        backgroundColor: '#FFF',
-        borderRadius: 30,
-    },
-    buttonText: {
-        color: '#000',
         fontWeight: 'bold',
-        fontFamily: 'Courier',
+        marginBottom: 60,
+        textAlign: 'center',
     },
+    paymentContainer: {
+        width: '100%',
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    paymentText: {
+        color: '#FFF',
+        fontSize: 18,
+        marginBottom: 10,
+    },
+    detailsText: {
+        color: '#888',
+        fontSize: 14,
+        marginBottom: 30,
+    },
+    swishButton: {
+        backgroundColor: '#FFF',
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 4,
+        width: '100%',
+        alignItems: 'center',
+    },
+    swishButtonText: {
+        color: '#000',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    retakeLink: {
+        color: '#666',
+        marginTop: 20,
+        textDecorationLine: 'underline',
+    }
 });
