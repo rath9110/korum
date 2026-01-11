@@ -1,39 +1,70 @@
 export type QuizQuestion = {
     id: number;
+    phase: 1 | 2;
+    type: 'image' | 'text';
     text: string;
-    leftOption: { text: string; archetype: string; image: string };
-    rightOption: { text: string; archetype: string; image: string };
+    leftOption: { text: string; archetype?: string; image?: string };
+    rightOption: { text: string; archetype?: string; image?: string };
 };
 
 export const QUIZ_DATA: QuizQuestion[] = [
+    // PHASE 1: VIBE CHECK (Visual, High Energy)
     {
         id: 1,
-        text: "Friday Night",
-        leftOption: { text: "Gallery Opening", archetype: "THE_ARCHITECT", image: "https://placehold.co/400x600/111/FFF?text=Gallery" },
-        rightOption: { text: "Underground Rave", archetype: "THE_NOMAD", image: "https://placehold.co/400x600/111/FFF?text=Rave" },
+        phase: 1,
+        type: 'image',
+        text: "What's the volume of your evening?",
+        leftOption: { text: "Low / Curated", archetype: "THE_ARCHITECT", image: "https://placehold.co/400x600/111/FFF?text=Low+Vol" },
+        rightOption: { text: "High / Neon", archetype: "THE_HUSTLER", image: "https://placehold.co/400x600/111/FFF?text=High+Vol" },
     },
     {
         id: 2,
-        text: "Your Vibe",
-        leftOption: { text: "Minimalist Luxe", archetype: "THE_SOCIALITE", image: "https://placehold.co/400x600/111/FFF?text=Luxe" },
-        rightOption: { text: "Vintage Chao", archetype: "THE_POET", image: "https://placehold.co/400x600/111/FFF?text=Vintage" },
+        phase: 1,
+        type: 'image',
+        text: "Choose your light.",
+        leftOption: { text: "Warm Candle", archetype: "THE_MYSTIC", image: "https://placehold.co/400x600/111/FFF?text=Candle" },
+        rightOption: { text: "Neon Pulse", archetype: "THE_NOMAD", image: "https://placehold.co/400x600/111/FFF?text=Neon" },
     },
     {
         id: 3,
-        text: "Drink of Choice",
-        leftOption: { text: "Natural Wine", archetype: "THE_MYSTIC", image: "https://placehold.co/400x600/111/FFF?text=Wine" },
-        rightOption: { text: "Spicy Marg", archetype: "THE_HUSTLER", image: "https://placehold.co/400x600/111/FFF?text=Marg" },
+        phase: 1,
+        type: 'image',
+        text: "In a group of four, you usually...",
+        leftOption: { text: "Lead", archetype: "THE_SOCIALITE", image: "https://placehold.co/400x600/111/FFF?text=Lead" },
+        rightOption: { text: "Listen", archetype: "THE_POET", image: "https://placehold.co/400x600/111/FFF?text=Listen" },
     },
     {
         id: 4,
-        text: "Ideal Date",
-        leftOption: { text: "Rooftop Talk", archetype: "THE_SOCIALITE", image: "https://placehold.co/400x600/111/FFF?text=Rooftop" },
-        rightOption: { text: "Dive Bar Deep Dive", archetype: "THE_POET", image: "https://placehold.co/400x600/111/FFF?text=Dive" },
+        phase: 1,
+        type: 'image',
+        text: "Your ideal table setting.",
+        leftOption: { text: "Minimalist", archetype: "THE_ARCHITECT", image: "https://placehold.co/400x600/111/FFF?text=Minimal" },
+        rightOption: { text: "Eclectic", archetype: "THE_NOMAD", image: "https://placehold.co/400x600/111/FFF?text=Eclectic" },
     },
+
+    // PHASE 2: DEPTH LOCK (Text-based, High Status)
     {
         id: 5,
-        text: "Sunday Morning",
-        leftOption: { text: "Spin Class", archetype: "THE_HUSTLER", image: "https://placehold.co/400x600/111/FFF?text=Spin" },
-        rightOption: { text: "Forest Walk", archetype: "THE_MYSTIC", image: "https://placehold.co/400x600/111/FFF?text=Forest" },
+        phase: 2,
+        type: 'text',
+        text: "Best thing about meeting someone new?",
+        leftOption: { text: "Fresh Perspective", archetype: "THE_SOCIALITE" },
+        rightOption: { text: "Shared Hobby", archetype: "THE_POET" },
+    },
+    {
+        id: 6,
+        phase: 2,
+        type: 'text',
+        text: "Success tonight means talking about...",
+        leftOption: { text: "Big Ideas", archetype: "THE_HUSTLER" },
+        rightOption: { text: "Hidden Gems", archetype: "THE_MYSTIC" },
+    },
+    {
+        id: 7,
+        phase: 2,
+        type: 'text',
+        text: "Are you ready to be present?",
+        leftOption: { text: "I'm in", archetype: "THE_ARCHITECT" }, // Reusing archetypes for logic, but this is a commitment Q
+        rightOption: { text: "I'll try", archetype: "THE_NOMAD" },
     },
 ];
