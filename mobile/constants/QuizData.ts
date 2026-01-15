@@ -20,7 +20,7 @@ export const QUIZ_DATA: QuizQuestion[] = [
         id: 1,
         phase: 1,
         text: "What's the volume of your evening?",
-        image: "https://placehold.co/600x900/111/FFF?text=Noise+Grain", // Placeholder for grainy B/W
+        image: "https://placehold.co/600x900/111/FFF?text=Noise", // Placeholder for grainy B/W
         options: [
             { text: "Ambient", weights: { THE_OBSERVER: 2 } },
             { text: "Electric", weights: { THE_EPICUREAN: 2 } },
@@ -31,7 +31,7 @@ export const QUIZ_DATA: QuizQuestion[] = [
         id: 2,
         phase: 1,
         text: "Choose your light.",
-        image: "https://placehold.co/600x900/111/FFF?text=Light+Grain",
+        image: "https://placehold.co/600x900/111/FFF?text=Light",
         options: [
             { text: "Warm Candle", weights: { THE_EPICUREAN: 1, THE_OBSERVER: 1 } },
             { text: "Neon Pulse", weights: { THE_BRUTALIST: 2 } },
@@ -42,7 +42,7 @@ export const QUIZ_DATA: QuizQuestion[] = [
         id: 3,
         phase: 1,
         text: "At the table, you are...",
-        image: "https://placehold.co/600x900/111/FFF?text=Table+Grain",
+        image: "https://placehold.co/600x900/111/FFF?text=Table",
         options: [
             { text: "The Anchor", weights: { THE_MODERNIST: 3 } },
             { text: "The Spark", weights: { THE_CATALYST: 3 } },
@@ -53,7 +53,7 @@ export const QUIZ_DATA: QuizQuestion[] = [
         id: 4,
         phase: 1,
         text: "Select your surroundings.",
-        image: "https://placehold.co/600x900/111/FFF?text=Space+Grain",
+        image: "https://placehold.co/600x900/111/FFF?text=Space",
         options: [
             { text: "Raw & Industrial", weights: { THE_BRUTALIST: 3 } },
             { text: "Soft & Heritage", weights: { THE_EPICUREAN: 2 } },
@@ -65,7 +65,7 @@ export const QUIZ_DATA: QuizQuestion[] = [
         id: 5,
         phase: 2,
         text: "The best part of a new encounter is...",
-        image: "https://placehold.co/600x900/111/FFF?text=Connection+Grain",
+        image: "https://placehold.co/600x900/111/FFF?text=Connection",
         options: [
             { text: "A fresh perspective", weights: { THE_OBSERVER: 1, THE_CATALYST: 1 } },
             { text: "Shared obsession", weights: { THE_BRUTALIST: 1 } },
@@ -76,7 +76,7 @@ export const QUIZ_DATA: QuizQuestion[] = [
         id: 6,
         phase: 2,
         text: "Tonight is a success if we talk about...",
-        image: "https://placehold.co/600x900/111/FFF?text=Intent+Grain",
+        image: "https://placehold.co/600x900/111/FFF?text=Intent",
         options: [
             { text: "Ideas", weights: { THE_BRUTALIST: 2, THE_CATALYST: 2 } },
             { text: "Exploration", weights: { THE_EPICUREAN: 1 } },
@@ -87,7 +87,7 @@ export const QUIZ_DATA: QuizQuestion[] = [
         id: 7,
         phase: 2,
         text: "KRETS is a phone-free ritual. Are you in?",
-        image: "https://placehold.co/600x900/111/FFF?text=Pact+Grain",
+        image: "https://placehold.co/600x900/111/FFF?text=Pact",
         options: [
             { text: "Yes, I am present.", weights: {} }, // Threshold check, no specific points or maybe points to all? Logic says "Binary" check.
         ]
