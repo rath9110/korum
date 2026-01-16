@@ -1,7 +1,8 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
+import * as AuthSession from 'expo-auth-session';
 
 const ExpoSecureStoreAdapter = {
     getItem: (key: string) => {
@@ -17,7 +18,7 @@ const ExpoSecureStoreAdapter = {
             localStorage.setItem(key, value);
             return Promise.resolve();
         }
-        SecureStore.setItemAsync(key, value);
+        return SecureStore.setItemAsync(key, value);
     },
     removeItem: (key: string) => {
         if (Platform.OS === 'web') {
@@ -25,13 +26,12 @@ const ExpoSecureStoreAdapter = {
             localStorage.removeItem(key);
             return Promise.resolve();
         }
-        SecureStore.deleteItemAsync(key);
+        return SecureStore.deleteItemAsync(key);
     },
 };
 
-// TODO: Replace with your actual Supabase URL and Anon Key
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://your-project.supabase.co';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your-anon-key';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://xyzcompany.supabase.co';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'public-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
@@ -40,4 +40,41 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         persistSession: true,
         detectSessionInUrl: false,
     },
+});
+
+// Auth Helper for Google
+export const signInWithGoogle = async () => {
+    try {
+        const redirectUrl = AuthSession.makeRedirectUri();
+
+        const response = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: redirectUrl,
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent',
+                }
+            },
+        });
+
+        if (response.error) {
+            console.error('Error signing in:', response.error.message);
+            throw response.error;
+        }
+
+        return response.data;
+    } catch (error) {
+        console.error("Google Signin Error", error);
+        throw error;
+    }
+};
+
+// Handle App State for Auth
+AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+        supabase.auth.startAutoRefresh();
+    } else {
+        supabase.auth.stopAutoRefresh();
+    }
 });

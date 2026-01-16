@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Platform, Image } from 'react-native';
-import { BlurView } from 'expo-blur'; // Or simulated if web
 import { StatusBar } from 'expo-status-bar';
 
 type DinnerEvent = {
@@ -43,32 +42,42 @@ const DINNER_EVENTS: DinnerEvent[] = [
     }
 ];
 
-export const DinnerSelection = ({ onSelect }: { onSelect: (event: DinnerEvent) => void }) => {
+export const DinnerSelection = ({ onSelect, bookedEventId }: { onSelect: (event: DinnerEvent) => void, bookedEventId?: string }) => {
     return (
         <View style={styles.container}>
             <Text style={styles.headerTitle}>SELECT YOUR CIRCLE</Text>
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {DINNER_EVENTS.map((event) => (
-                    <TouchableOpacity
-                        key={event.id}
-                        style={styles.card}
-                        activeOpacity={0.9}
-                        onPress={() => onSelect(event)}
-                    >
-                        <Image source={{ uri: event.image }} style={styles.cardInfo} />
-                        <View style={styles.overlay}>
-                            <View style={styles.badge}>
-                                <Text style={styles.badgeText}>{event.district}</Text>
+                {DINNER_EVENTS.map((event) => {
+                    const isBooked = event.id === bookedEventId;
+                    return (
+                        <TouchableOpacity
+                            key={event.id}
+                            style={[styles.card, isBooked && styles.cardBooked]}
+                            activeOpacity={isBooked ? 1 : 0.9}
+                            onPress={() => !isBooked && onSelect(event)}
+                            disabled={isBooked}
+                        >
+                            <Image source={{ uri: event.image }} style={styles.cardInfo} />
+                            <View style={[styles.overlay, isBooked && styles.overlayBooked]}>
+                                <View style={styles.badge}>
+                                    <Text style={styles.badgeText}>{event.district}</Text>
+                                </View>
+                                <Text style={styles.themeName}>{event.theme}</Text>
+                                <View style={styles.row}>
+                                    <Text style={styles.detailText}>{event.date} • {event.time}</Text>
+                                    {isBooked ? (
+                                        <View style={styles.bookedTag}>
+                                            <Text style={styles.bookedText}>In the Circle</Text>
+                                        </View>
+                                    ) : (
+                                        <Text style={styles.priceText}>{event.price}</Text>
+                                    )}
+                                </View>
                             </View>
-                            <Text style={styles.themeName}>{event.theme}</Text>
-                            <View style={styles.row}>
-                                <Text style={styles.detailText}>{event.date} • {event.time}</Text>
-                                <Text style={styles.priceText}>{event.price}</Text>
-                            </View>
-                        </View>
-                    </TouchableOpacity>
-                ))}
+                        </TouchableOpacity>
+                    );
+                })}
             </ScrollView>
         </View>
     );
@@ -146,5 +155,25 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontWeight: 'bold',
         fontSize: 14,
+    },
+    cardBooked: {
+        borderColor: '#FFF',
+        borderWidth: 1,
+    },
+    overlayBooked: {
+        backgroundColor: 'rgba(0,0,0,0.8)', // Darker overlay for focus
+    },
+    bookedTag: {
+        backgroundColor: '#FFF',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 2,
+    },
+    bookedText: {
+        color: '#000',
+        fontWeight: 'bold',
+        fontSize: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
     },
 });

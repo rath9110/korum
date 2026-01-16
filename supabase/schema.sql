@@ -13,8 +13,9 @@ create type archetype_enum as enum (
 -- 2. USERS (KRETS Profile)
 create table public.users (
   id uuid references auth.users not null primary key,
-  full_name text not null,
-  personal_number_hash text not null unique,
+  full_name text,
+  avatar_url text, -- From Google Profile
+  personal_number_hash text, -- Nullable (BankID legacy)
   district text check (district in ('Vasastan', 'Södermalm', 'Östermalm', 'Kungsholmen')),
   
   -- The "Social Identity"
