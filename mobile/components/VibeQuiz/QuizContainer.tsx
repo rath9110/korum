@@ -73,10 +73,10 @@ export const QuizContainer = () => {
                     await clearPendingDinner(); // Clear it so we don't re-trigger
                     setFlowState('DINNERS');
                 } else {
-                    // If logged in generally, where do we go? 
-                    // For now, if no pending booking, we stay at QUIZ or go to REVEAL if user data existed.
-                    // Simplifying: if session exists, let's assume they might be returning user. State management is complex here.
-                    // But strictly for the "Booked" flow:
+                    // If user is logged in but no pending dinner, they're a returning user
+                    // Take them directly to the dinner selection screen
+                    console.log("Authenticated user - going to DINNERS");
+                    setFlowState('DINNERS');
                 }
             }
         };
@@ -127,14 +127,23 @@ export const QuizContainer = () => {
     const handleDinnerSelect = async (event: any) => {
         console.log("Selected Dinner:", event.theme);
 
-        // 1. Persist ID for retrieval after redirect
-        await savePendingDinner(event.id);
-        // Do NOT set bookedDinnerId here yet. Only after Auth confirmation.
+        // Check if user is already authenticated
+        const { data: { session } } = await supabase.auth.getSession();
 
-        try {
-            await signInWithGoogle();
-        } catch (error) {
-            console.error("Auth Failed", error);
+        if (session) {
+            // User is already logged in - just save the booking
+            console.log("User already authenticated - saving booking");
+            setBookedDinnerId(event.id);
+            // TODO: Save booking to database here
+            // For now, just update the UI to show "In the Circle"
+        } else {
+            // User not authenticated - save pending and trigger OAuth
+            await savePendingDinner(event.id);
+            try {
+                await signInWithGoogle();
+            } catch (error) {
+                console.error("Auth Failed", error);
+            }
         }
     };
 
