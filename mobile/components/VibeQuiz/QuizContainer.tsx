@@ -43,7 +43,11 @@ const initialScores: Record<Archetype, number> = {
 
 type FlowState = 'QUIZ' | 'ANALYZING' | 'REVEAL' | 'DINNERS' | 'CONFIRMATION';
 
-export const QuizContainer = () => {
+type QuizContainerProps = {
+    onAuthRequired?: () => void; // Callback when auth is needed
+};
+
+export const QuizContainer = ({ onAuthRequired }: QuizContainerProps = {}) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [scores, setScores] = useState<Record<Archetype, number>>({ ...initialScores });
     const [flowState, setFlowState] = useState<FlowState>('QUIZ');
@@ -134,15 +138,21 @@ export const QuizContainer = () => {
             // User is already logged in - just save the booking
             console.log("User already authenticated - saving booking");
             setBookedDinnerId(event.id);
-            // TODO: Save booking to database here
-            // For now, just update the UI to show "In the Circle"
+            // TODO: Save booking to database + derive district from event
         } else {
-            // User not authenticated - save pending and trigger OAuth
-            await savePendingDinner(event.id);
-            try {
-                await signInWithGoogle();
-            } catch (error) {
-                console.error("Auth Failed", error);
+            // User not authenticated - trigger auth prompt via callback
+            if (onAuthRequired) {
+                // Save pending dinner for later
+                await savePendingDinner(event.id);
+                onAuthRequired();
+            } else {
+                // Fallback: direct auth (for backward compatibility)
+                await savePendingDinner(event.id);
+                try {
+                    await signInWithGoogle();
+                } catch (error) {
+                    console.error("Auth Failed", error);
+                }
             }
         }
     };
@@ -151,6 +161,39 @@ export const QuizContainer = () => {
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_IN' && session) {
                 console.log("Auth Event: SIGNED_IN");
+
+                // Calculate winner archetype from current scores
+                const winner: Archetype = Object.keys(scores).reduce((a, b) =>
+                    scores[a as Archetype] > scores[b as Archetype] ? a : b
+                ) as Archetype;
+
+                console.log("Saving profile with archetype:", winner, "scores:", scores);
+
+                // Save/update user profile in database
+                try {
+                    const { error: upsertError } = await supabase
+                        .from('users')
+                        .upsert({
+                            id: session.user.id,
+                            full_name: session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email,
+                            avatar_url: session.user.user_metadata.avatar_url || session.user.user_metadata.picture,
+                            primary_archetype: winner,
+                            archetype_scores: scores,
+                            is_active_for_week: false,
+                            social_karma: 0.0,
+                            top_vibe_tags: []
+                        }, {
+                            onConflict: 'id'
+                        });
+
+                    if (upsertError) {
+                        console.error("Error saving profile:", upsertError);
+                    } else {
+                        console.log("✓ Profile saved successfully");
+                    }
+                } catch (err) {
+                    console.error("Profile save exception:", err);
+                }
 
                 // Check pending again in case this listener fires before Init or during active usage
                 const pendingId = await getPendingDinner();
@@ -165,7 +208,7 @@ export const QuizContainer = () => {
         return () => {
             authListener.subscription.unsubscribe();
         };
-    }, []);
+    }, [scores]);
 
     // Render "Analyzing..." Interstitial
     if (flowState === 'ANALYZING') {

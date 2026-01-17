@@ -16,7 +16,7 @@ create table public.users (
   full_name text,
   avatar_url text, -- From Google Profile
   personal_number_hash text, -- Nullable (BankID legacy)
-  district text check (district in ('Vasastan', 'Södermalm', 'Östermalm', 'Kungsholmen')),
+  district text, -- Derived from first dinner booking (e.g., 'Vasastan', 'Södermalm')
   
   -- The "Social Identity"
   primary_archetype archetype_enum,
@@ -24,6 +24,10 @@ create table public.users (
   
   -- Status
   is_active_for_week boolean default false, -- Set to TRUE when Swish 100 SEK is received
+  
+  -- Profile & Reputation
+  social_karma decimal(2,1) default 0.0, -- 0.0-5.0 rating from peer feedback
+  top_vibe_tags jsonb default '[]'::jsonb, -- e.g., ["Highly Engaging", "Insightful"]
   
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
