@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View, ScrollView, SafeAreaView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { IdentityHeader } from './IdentityHeader';
+import { UpcomingReservation } from './UpcomingReservation';
 
 export const ProfileScreen = () => {
     return (
@@ -14,7 +15,9 @@ export const ProfileScreen = () => {
                 {/* Module 1: Identity Header */}
                 <IdentityHeader />
 
-                {/* TODO: Module 2: Upcoming Reservations */}
+                {/* Module 2: Upcoming Reservations */}
+                <UpcomingReservation />
+
                 {/* TODO: Module 3: Assembly History */}
                 {/* TODO: Module 4: Feedback Loop */}
             </ScrollView>

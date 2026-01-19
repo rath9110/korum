@@ -40,6 +40,18 @@ create table public.clusters (
   district text not null,
   restaurant_name text,
   restaurant_location text,
+  dinner_date timestamp with time zone, -- Actual dinner date/time
+  venue_image_url text, -- Image of the venue
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- 3b. RESERVATIONS (User Bookings)
+create table public.reservations (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references public.users(id) on delete cascade,
+  cluster_id uuid references public.clusters(id) on delete cascade,
+  dinner_event_id text not null, -- e.g., "1", "2", "3" from DINNER_EVENTS
+  status text default 'PENDING' check (status in ('PENDING', 'CONFIRMED', 'ATTENDED', 'CANCELLED')),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

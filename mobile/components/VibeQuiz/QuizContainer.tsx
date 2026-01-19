@@ -135,10 +135,60 @@ export const QuizContainer = ({ onAuthRequired }: QuizContainerProps = {}) => {
         const { data: { session } } = await supabase.auth.getSession();
 
         if (session) {
-            // User is already logged in - just save the booking
-            console.log("User already authenticated - saving booking");
+            // User is already logged in - save the booking to database
+            console.log("User already authenticated - saving booking for:", event.id);
             setBookedDinnerId(event.id);
-            // TODO: Save booking to database + derive district from event
+
+            try {
+                // 1. Create cluster for this dinner event
+                const dinnerDate = new Date();
+                dinnerDate.setDate(dinnerDate.getDate() + 3); // Next Wednesday
+                dinnerDate.setHours(20, 0, 0, 0);
+
+                const { data: cluster, error: clusterError } = await supabase
+                    .from('clusters')
+                    .insert({
+                        status: 'FORMING',
+                        week_date: dinnerDate.toISOString().split('T')[0],
+                        district: event.district,
+                        restaurant_name: event.theme,
+                        restaurant_location: event.district,
+                        dinner_date: dinnerDate.toISOString(),
+                        venue_image_url: event.image,
+                    })
+                    .select()
+                    .single();
+
+                if (clusterError) {
+                    console.error("Error creating cluster:", clusterError);
+                    return;
+                }
+
+                // 2. Create reservation
+                const { error: reservationError } = await supabase
+                    .from('reservations')
+                    .insert({
+                        user_id: session.user.id,
+                        cluster_id: cluster.id,
+                        dinner_event_id: event.id,
+                        status: 'CONFIRMED',
+                    });
+
+                if (reservationError) {
+                    console.error("Error creating reservation:", reservationError);
+                } else {
+                    console.log("✓ Reservation saved!");
+
+                    // Set user's district if not set
+                    await supabase
+                        .from('users')
+                        .update({ district: event.district })
+                        .eq('id', session.user.id)
+                        .is('district', null);
+                }
+            } catch (err) {
+                console.error("Reservation save error:", err);
+            }
         } else {
             // User not authenticated - trigger auth prompt via callback
             if (onAuthRequired) {
