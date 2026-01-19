@@ -2,26 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image, Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
 
-type UpcomingReservationProps = {
-    userId?: string;
-};
+
 
 type ReservationData = {
     dinner_date: string;
     theme: string;
-    district: string;
+
     venue_image_url: string;
     time: string;
 };
 
-export const UpcomingReservation = ({ userId }: UpcomingReservationProps) => {
+export const UpcomingReservation = () => {
     const [reservation, setReservation] = useState<ReservationData | null>(null);
     const [timeLeft, setTimeLeft] = useState<string>('');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchUpcomingReservation();
-    }, [userId]);
+    }, []);
 
     useEffect(() => {
         if (reservation?.dinner_date) {
@@ -35,7 +33,7 @@ export const UpcomingReservation = ({ userId }: UpcomingReservationProps) => {
 
     const fetchUpcomingReservation = async () => {
         try {
-            const uid = userId || (await supabase.auth.getUser()).data.user?.id;
+            const uid = (await supabase.auth.getUser()).data.user?.id;
             if (!uid) {
                 setLoading(false);
                 return;
@@ -49,7 +47,7 @@ export const UpcomingReservation = ({ userId }: UpcomingReservationProps) => {
           clusters:cluster_id (
             dinner_date,
             restaurant_name,
-            district,
+
             venue_image_url
           )
         `)
@@ -70,7 +68,7 @@ export const UpcomingReservation = ({ userId }: UpcomingReservationProps) => {
                 setReservation({
                     dinner_date: cluster.dinner_date,
                     theme: cluster.restaurant_name || 'KRETS Dinner',
-                    district: cluster.district || 'Stockholm',
+
                     venue_image_url: cluster.venue_image_url || 'https://placehold.co/600x400/111/FFF?text=Venue',
                     time: dinnerDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
                 });
