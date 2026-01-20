@@ -2,14 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image, Platform } from 'react-native';
 import { supabase } from '../../lib/supabase';
 
-
-
 type ReservationData = {
     dinner_date: string;
     theme: string;
-
     venue_image_url: string;
     time: string;
+    peer_archetypes: string[];
 };
 
 export const UpcomingReservation = () => {
@@ -45,9 +43,9 @@ export const UpcomingReservation = () => {
                 .select(`
           *,
           clusters:cluster_id (
+            id,
             dinner_date,
             restaurant_name,
-
             venue_image_url
           )
         `)
@@ -65,12 +63,33 @@ export const UpcomingReservation = () => {
                 const cluster = data.clusters as any;
                 const dinnerDate = new Date(cluster.dinner_date);
 
+                // Fetch peers (other users in the same cluster)
+                let peerArchetypes: string[] = [];
+                if (cluster.id) {
+                    const { data: peers } = await supabase
+                        .from('reservations')
+                        .select(`
+                            users:user_id (
+                                primary_archetype
+                            )
+                        `)
+                        .eq('cluster_id', cluster.id)
+                        .neq('user_id', uid); // Exclude self
+
+                    if (peers) {
+                        peerArchetypes = peers
+                            .map((p: any) => p.users?.primary_archetype)
+                            .filter(Boolean)
+                            .map((a: string) => a.replace(/_/g, ' ')); // Format for display
+                    }
+                }
+
                 setReservation({
                     dinner_date: cluster.dinner_date,
                     theme: cluster.restaurant_name || 'KRETS Dinner',
-
                     venue_image_url: cluster.venue_image_url || 'https://placehold.co/600x400/111/FFF?text=Venue',
                     time: dinnerDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
+                    peer_archetypes: peerArchetypes
                 });
             }
         } catch (err) {
@@ -149,6 +168,21 @@ export const UpcomingReservation = () => {
             <View style={styles.details}>
                 <Text style={styles.themeText}>{reservation.theme}</Text>
                 <Text style={styles.timeText}>{reservation.time}</Text>
+
+                {/* Guest List Teaser */}
+                {reservation.peer_archetypes.length > 0 && (
+                    <View style={styles.teaserContainer}>
+                        <Text style={styles.teaserLabel}>WHO IS COMING</Text>
+                        <View style={styles.archetypeList}>
+                            {reservation.peer_archetypes.map((archetype, index) => (
+                                <Text key={index} style={styles.archetypeBadge}>
+                                    {archetype}
+                                </Text>
+                            ))}
+                            <Text style={styles.archetypeBadge}>+ YOU</Text>
+                        </View>
+                    </View>
+                )}
 
                 {/* Countdown */}
                 <View style={styles.countdownContainer}>
@@ -232,6 +266,39 @@ const styles = StyleSheet.create({
         color: '#CCC',
         fontSize: 14,
         marginBottom: 16,
+    },
+    teaserContainer: {
+        marginBottom: 20,
+    },
+    teaserLabel: {
+        color: '#666',
+        fontSize: 9,
+        letterSpacing: 1.5,
+        marginBottom: 8,
+        fontFamily: Platform.select({
+            web: 'JetBrains Mono, monospace',
+            default: 'monospace'
+        }),
+    },
+    archetypeList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    archetypeBadge: {
+        color: '#FFF',
+        fontSize: 11,
+        borderWidth: 0.5,
+        borderColor: 'rgba(255,255,255,0.3)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        overflow: 'hidden',
+        fontFamily: Platform.select({
+            web: 'JetBrains Mono, monospace',
+            default: 'monospace'
+        }),
     },
     countdownContainer: {
         backgroundColor: 'rgba(255, 255, 255, 0.05)',

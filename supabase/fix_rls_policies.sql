@@ -29,6 +29,19 @@ ON public.reservations FOR SELECT
 TO authenticated 
 USING (user_id = auth.uid());
 
+-- NEW: Allow users to view reservations of peers in the same cluster
+DROP POLICY IF EXISTS "Users can view peer reservations" ON public.reservations;
+CREATE POLICY "Users can view peer reservations" 
+ON public.reservations FOR SELECT 
+TO authenticated 
+USING (
+  cluster_id IN (
+    SELECT cluster_id 
+    FROM public.reservations 
+    WHERE user_id = auth.uid()
+  )
+);
+
 -- Verify policies are created
 SELECT tablename, policyname, cmd, qual 
 FROM pg_policies 
