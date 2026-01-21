@@ -16,7 +16,6 @@ export const UpcomingReservation = () => {
     const [timeLeft, setTimeLeft] = useState<string>('');
     const [loading, setLoading] = useState(true);
 
-    const [debugInfo, setDebugInfo] = useState<string>('');
 
     useEffect(() => {
         fetchUpcomingReservation();
@@ -34,12 +33,10 @@ export const UpcomingReservation = () => {
 
     const fetchUpcomingReservation = async () => {
         try {
-            const { data: userData } = await supabase.auth.getUser();
-            const uid = userData.user?.id;
+            const uid = (await supabase.auth.getUser()).data.user?.id;
 
             if (!uid) {
                 setLoading(false);
-                setDebugInfo('No authenticated user found');
                 return;
             }
 
@@ -56,7 +53,6 @@ export const UpcomingReservation = () => {
           )
         `)
                 .eq('user_id', uid)
-                .eq('user_id', uid)
                 .in('status', ['CONFIRMED', 'PENDING'])
                 .order('dinner_date', { foreignTable: 'clusters', ascending: true })
                 .limit(1)
@@ -65,7 +61,6 @@ export const UpcomingReservation = () => {
             if (error) {
                 console.error('No upcoming reservations:', error);
                 setReservation(null);
-                setDebugInfo(`Error: ${error.message} (Code: ${error.code}) \nUser: ${uid}`);
             } else if (data && data.clusters) {
                 // ... process data ...
 
@@ -102,12 +97,9 @@ export const UpcomingReservation = () => {
                     peer_archetypes: peerArchetypes,
                     status: data.status,
                 });
-            } else {
-                setDebugInfo(`No clusters found in reservation.\nUser: ${uid}\nData: ${JSON.stringify(data)}`);
             }
         } catch (err) {
             console.error('Reservation fetch error:', err);
-            setDebugInfo(`Exception: ${JSON.stringify(err)}`);
         } finally {
             setLoading(false);
         }
@@ -157,7 +149,6 @@ export const UpcomingReservation = () => {
             <View style={styles.container}>
                 <Text style={styles.emptyText}>No upcoming reservations</Text>
                 <Text style={styles.emptySubtext}>Select a dinner to join the circle</Text>
-                {debugInfo ? <Text style={styles.debugText}>{debugInfo}</Text> : null}
             </View>
         );
     }
@@ -388,15 +379,5 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         paddingBottom: 32,
         textAlign: 'center',
-    },
-    debugText: {
-        color: '#333',
-        fontSize: 10,
-        padding: 16,
-        textAlign: 'center',
-        fontFamily: Platform.select({
-            web: 'monospace',
-            default: 'monospace'
-        }),
     },
 });
