@@ -8,12 +8,15 @@ type ReservationData = {
     venue_image_url: string;
     time: string;
     peer_archetypes: string[];
+    status: 'CONFIRMED' | 'PENDING';
 };
 
 export const UpcomingReservation = () => {
     const [reservation, setReservation] = useState<ReservationData | null>(null);
     const [timeLeft, setTimeLeft] = useState<string>('');
     const [loading, setLoading] = useState(true);
+
+    const [debugInfo, setDebugInfo] = useState<string>('');
 
     useEffect(() => {
         fetchUpcomingReservation();
@@ -31,9 +34,12 @@ export const UpcomingReservation = () => {
 
     const fetchUpcomingReservation = async () => {
         try {
-            const uid = (await supabase.auth.getUser()).data.user?.id;
+            const { data: userData } = await supabase.auth.getUser();
+            const uid = userData.user?.id;
+
             if (!uid) {
                 setLoading(false);
+                setDebugInfo('No authenticated user found');
                 return;
             }
 
@@ -50,23 +56,27 @@ export const UpcomingReservation = () => {
           )
         `)
                 .eq('user_id', uid)
-                .eq('status', 'CONFIRMED')
-                .gt('clusters.dinner_date', new Date().toISOString())
-                .order('clusters.dinner_date', { ascending: true })
+                .eq('user_id', uid)
+                .in('status', ['CONFIRMED', 'PENDING'])
+                .order('dinner_date', { foreignTable: 'clusters', ascending: true })
                 .limit(1)
                 .single();
 
             if (error) {
                 console.error('No upcoming reservations:', error);
                 setReservation(null);
+                setDebugInfo(`Error: ${error.message} (Code: ${error.code}) \nUser: ${uid}`);
             } else if (data && data.clusters) {
+                // ... process data ...
+
                 const cluster = data.clusters as any;
                 const dinnerDate = new Date(cluster.dinner_date);
 
                 // Fetch peers (other users in the same cluster)
                 let peerArchetypes: string[] = [];
-                if (cluster.id) {
-                    const { data: peers } = await supabase
+                // Only show peers if confirmed
+                if (cluster.id && data.status === 'CONFIRMED') {
+                    const { data: peers, error: peerError } = await supabase
                         .from('reservations')
                         .select(`
                             users:user_id (
@@ -89,11 +99,15 @@ export const UpcomingReservation = () => {
                     theme: cluster.restaurant_name || 'KRETS Dinner',
                     venue_image_url: cluster.venue_image_url || 'https://placehold.co/600x400/111/FFF?text=Venue',
                     time: dinnerDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }),
-                    peer_archetypes: peerArchetypes
+                    peer_archetypes: peerArchetypes,
+                    status: data.status,
                 });
+            } else {
+                setDebugInfo(`No clusters found in reservation.\nUser: ${uid}\nData: ${JSON.stringify(data)}`);
             }
         } catch (err) {
             console.error('Reservation fetch error:', err);
+            setDebugInfo(`Exception: ${JSON.stringify(err)}`);
         } finally {
             setLoading(false);
         }
@@ -143,6 +157,7 @@ export const UpcomingReservation = () => {
             <View style={styles.container}>
                 <Text style={styles.emptyText}>No upcoming reservations</Text>
                 <Text style={styles.emptySubtext}>Select a dinner to join the circle</Text>
+                {debugInfo ? <Text style={styles.debugText}>{debugInfo}</Text> : null}
             </View>
         );
     }
@@ -152,8 +167,10 @@ export const UpcomingReservation = () => {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerLabel}>NEXT ASSEMBLY</Text>
-                <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>IN THE CIRCLE</Text>
+                <View style={[styles.statusBadge, reservation.status === 'PENDING' && styles.statusBadgePending]}>
+                    <Text style={[styles.statusText, reservation.status === 'PENDING' && styles.statusTextPending]}>
+                        {reservation.status === 'PENDING' ? 'PENDING' : 'IN THE CIRCLE'}
+                    </Text>
                 </View>
             </View>
 
@@ -236,6 +253,11 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 2,
     },
+    statusBadgePending: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#FFF',
+    },
     statusText: {
         color: '#000',
         fontSize: 10,
@@ -245,6 +267,9 @@ const styles = StyleSheet.create({
             web: 'JetBrains Mono, monospace',
             default: 'monospace'
         }),
+    },
+    statusTextPending: {
+        color: '#FFF',
     },
     venueImage: {
         width: '100%',
@@ -363,5 +388,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 32,
         paddingBottom: 32,
         textAlign: 'center',
+    },
+    debugText: {
+        color: '#333',
+        fontSize: 10,
+        padding: 16,
+        textAlign: 'center',
+        fontFamily: Platform.select({
+            web: 'monospace',
+            default: 'monospace'
+        }),
     },
 });

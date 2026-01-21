@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, SafeAreaView, ScrollView, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import { UpcomingReservation } from '../../components/Profile/UpcomingReservation';
 
 type ProfileDrawerProps = {
     visible: boolean;
@@ -72,6 +73,11 @@ export const ProfileDrawer = ({ visible, onClose, user }: ProfileDrawerProps) =>
                         <View style={styles.karmaContainer}>
                             <Text style={styles.karmaLabel}>SOCIAL KARMA</Text>
                             <Text style={styles.karmaValue}>{user.karma.toFixed(1)}</Text>
+                        </View>
+
+                        {/* Upcoming Reservation */}
+                        <View style={styles.sectionContainer}>
+                            <UpcomingReservation />
                         </View>
 
                         {/* Previous Assemblies Section */}
@@ -207,5 +213,9 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 22,
+    },
+    sectionContainer: {
+        width: '100%',
+        marginBottom: 24,
     },
 });
