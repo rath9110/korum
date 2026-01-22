@@ -45,7 +45,7 @@ export const UpcomingReservation = () => {
                 .from('reservations')
                 .select(`
           *,
-          clusters:cluster_id (
+          clusters!inner (
             id,
             dinner_date,
             restaurant_name,
@@ -54,9 +54,10 @@ export const UpcomingReservation = () => {
         `)
                 .eq('user_id', uid)
                 .in('status', ['CONFIRMED', 'PENDING'])
+                .gte('clusters.dinner_date', new Date().toISOString()) // Filter for future only
                 .order('dinner_date', { foreignTable: 'clusters', ascending: true })
                 .limit(1)
-                .single();
+                .single(); // Can error if none found, we handle error below
 
             if (error) {
                 console.error('No upcoming reservations:', error);
