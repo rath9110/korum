@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, Image, TouchableOpacity, SafeAreaView, ScrollView, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
 import { UpcomingReservation } from '../../components/Profile/UpcomingReservation';
+import { AssemblyHistory } from '../Assembly/AssemblyHistory';
+import { SocialLinksEditor } from '../../components/Profile/SocialLinksEditor';
 
 type ProfileDrawerProps = {
     visible: boolean;
@@ -83,10 +85,11 @@ export const ProfileDrawer = ({ visible, onClose, user }: ProfileDrawerProps) =>
                         {/* Previous Assemblies Section */}
                         <View style={styles.assembliesSection}>
                             <Text style={styles.assembliesTitle}>PREVIOUS ASSEMBLIES</Text>
-                            <Text style={styles.assembliesEmpty}>
-                                Complete your first dinner to unlock connections
-                            </Text>
+                            <AssemblyHistory />
                         </View>
+
+                        {/* Social Links Editor */}
+                        <SocialLinksEditor />
                     </ScrollView>
                 </SafeAreaView>
             </Animated.View>
